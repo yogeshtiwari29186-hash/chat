@@ -55,6 +55,10 @@ class FirebaseIdentityService(
         }.await()
     }
 
+    suspend fun getProfile(uid: String): Map<String, Any>? {
+        return db.collection("users").document(uid).get().await().data
+    }
+
     suspend fun findUserByUsername(username: String): Map<String, Any>? {
         val normalized = username.trim().lowercase()
         val reservation = db.collection("usernames").document(normalized).get().await()
