@@ -90,7 +90,14 @@ data class GroupEntity(
     val inviteCode: String,
     val isPublic: Boolean = false,
     val allowsAds: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis()
+    val onlyAdminsCanEditInfo: Boolean = true,
+    val onlyAdminsCanSendMessages: Boolean = false,
+    val disappearingMessagesSeconds: Long = 0,
+    val approvalRequired: Boolean = false,
+    val inviteLinkEnabled: Boolean = true,
+    val inviteLinkToken: String = inviteCode,
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 @Entity(tableName = "group_members", primaryKeys = ["groupId", "userId"])
