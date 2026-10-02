@@ -67,6 +67,7 @@ class MainActivity : ComponentActivity() {
 
                         !uiState.isAccountSetup -> {
                             OnboardingScreen(
+                                errorMessage = uiState.accountError,
                                 onComplete = { name, username, about ->
                                     mainViewModel.completeAccountCreation(name, username, about)
                                 }
