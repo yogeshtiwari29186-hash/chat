@@ -15,7 +15,7 @@ class FirebaseIdentityService(
     }
 
     suspend fun reserveUsername(username: String, displayName: String, photoUrl: String? = null): Boolean {
-        val normalized = username.trim().lowercase().replace(Regex("[^a-z0-9_."), "")
+        val normalized = username.trim().lowercase().replace(Regex("[^a-z0-9_.]"), "")
         require(normalized.length in 3..30) { "Username must be 3-30 characters" }
         val uid = ensureSignedIn()
         val ref = db.collection("usernames").document(normalized)
