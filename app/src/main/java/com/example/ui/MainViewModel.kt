@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.calling.CallManager
 import com.example.data.MeshRepository
+import com.example.data.firebase.FirebaseIdentityService
 import com.example.data.local.entity.ConversationEntity
 import com.example.data.local.entity.UserAccountEntity
 import com.example.mesh.model.MeshPeer
@@ -34,7 +35,8 @@ data class MainUiState(
 
 class MainViewModel(
     private val repository: MeshRepository,
-    val callManager: CallManager
+    val callManager: CallManager,
+    private val identityService: FirebaseIdentityService = FirebaseIdentityService()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -67,12 +69,19 @@ class MainViewModel(
         }
     }
 
-    fun completeAccountCreation(name: String, about: String) {
+    fun completeAccountCreation(name: String, username: String, about: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            val newUser = repository.getOrCreateAccount(name, about)
-            _uiState.update {
-                it.copy(isLoading = false, isAccountSetup = true, currentUser = newUser)
+            runCatching {
+                val uid = identityService.ensureSignedIn()
+                val reserved = identityService.reserveUsername(username, name)
+                check(reserved) { "Username is already taken" }
+                repository.getOrCreateAccount(name, about, username.trim().lowercase(), uid)
+            }.onSuccess { newUser ->
+                _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = newUser) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(isLoading = false, isAccountSetup = false) }
+                android.util.Log.e("MainViewModel", "Account creation failed", error)
             }
         }
     }
