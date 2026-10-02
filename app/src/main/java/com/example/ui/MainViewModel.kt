@@ -21,6 +21,7 @@ enum class MainTab {
 
 data class MainUiState(
     val isLoading: Boolean = true,
+    val accountError: String? = null,
     val isAccountSetup: Boolean = false,
     val currentUser: UserAccountEntity? = null,
     val selectedTab: MainTab = MainTab.CHATS,
@@ -71,21 +72,28 @@ class MainViewModel(
 
     fun completeAccountCreation(name: String, username: String, about: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { it.copy(isLoading = true, accountError = null) }
+            val normalizedUsername = username.trim().lowercase()
+            val localUser = runCatching {
+                repository.getOrCreateAccount(name.trim(), about.trim(), normalizedUsername, null)
+            }.getOrElse { error ->
+                _uiState.update { it.copy(isLoading = false, isAccountSetup = false, accountError = error.message ?: "Could not create local profile") }
+                return@launch
+            }
+            _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = localUser, accountError = null) }
             runCatching {
                 val uid = identityService.ensureSignedIn()
-                val reserved = identityService.reserveUsername(username, name)
+                val reserved = identityService.reserveUsername(normalizedUsername, name.trim())
                 check(reserved) { "Username is already taken" }
-                repository.getOrCreateAccount(name, about, username.trim().lowercase(), uid)
-            }.onSuccess { newUser ->
-                _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = newUser) }
+                val updated = localUser.copy(firebaseUid = uid)
+                repository.userDao.insertOrUpdate(updated)
+                _uiState.update { it.copy(currentUser = updated) }
             }.onFailure { error ->
-                _uiState.update { it.copy(isLoading = false, isAccountSetup = false) }
-                android.util.Log.e("MainViewModel", "Account creation failed", error)
+                android.util.Log.e("MainViewModel", "Firebase identity binding failed", error)
+                _uiState.update { it.copy(accountError = "Local profile created, but Firebase identity could not be linked: " + (error.message ?: "unknown error")) }
             }
         }
     }
-
     fun selectTab(tab: MainTab) {
         _uiState.update { it.copy(selectedTab = tab) }
     }
