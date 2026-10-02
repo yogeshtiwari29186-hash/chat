@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.graphics.Bitmap
 import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -38,6 +40,9 @@ import com.example.ui.theme.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.MultiFormatWriter
+import com.google.zxing.common.BitMatrix
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -353,7 +358,15 @@ fun ChatScreen(
             group = uiState.group,
             members = uiState.groupMembers,
             onDismiss = { viewModel.toggleGroupInfo(false) },
-            onToggleAds = { viewModel.toggleGroupAds(it) }
+            onToggleAds = { viewModel.toggleGroupAds(it) },
+            onAddMember = { id, name -> viewModel.addGroupMember(id, name) },
+            onRemoveMember = { id -> viewModel.removeGroupMember(id) },
+            onPromoteAdmin = { id -> viewModel.promoteGroupAdmin(id) },
+            onOnlyAdminsEdit = { viewModel.setOnlyAdminsCanEditInfo(it) },
+            onOnlyAdminsSend = { viewModel.setOnlyAdminsCanSendMessages(it) },
+            onApprovalRequired = { viewModel.setApprovalRequired(it) },
+            onInviteLinkEnabled = { viewModel.setInviteLinkEnabled(it) },
+            onDisappearing = { viewModel.setDisappearingMessages(it) }
         )
     }
 }
@@ -604,62 +617,92 @@ private fun GroupInfoDialog(
     group: com.example.data.local.entity.GroupEntity?,
     members: List<com.example.data.local.entity.GroupMemberEntity>,
     onDismiss: () -> Unit,
-    onToggleAds: (Boolean) -> Unit
+    onToggleAds: (Boolean) -> Unit,
+    onAddMember: (String, String) -> Unit,
+    onRemoveMember: (String) -> Unit,
+    onPromoteAdmin: (String) -> Unit,
+    onOnlyAdminsEdit: (Boolean) -> Unit,
+    onOnlyAdminsSend: (Boolean) -> Unit,
+    onApprovalRequired: (Boolean) -> Unit,
+    onInviteLinkEnabled: (Boolean) -> Unit,
+    onDisappearing: (Long) -> Unit
 ) {
+    val context = LocalContext.current
+    var showAdd by remember { mutableStateOf(false) }
+    var userId by remember { mutableStateOf("") }
+    var userName by remember { mutableStateOf("") }
+    var showQr by remember { mutableStateOf(false) }
+    val token = group?.inviteLinkToken ?: group?.inviteCode.orEmpty()
+    val invite = "https://whatsapp-347ca.web.app/group/" + (group?.groupId.orEmpty()) + "?code=" + token
+    val qrBitmap = remember(invite) { generateQrBitmap(invite) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(group?.name ?: "Group Info") },
         text = {
-            Column {
-                Text(group?.description ?: "", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(10.dp))
-                Text("Invite Code: ${group?.inviteCode}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = MeshTealPrimary)
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text("Group Advertisements", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                        Text("Owner-managed sponsor status", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Switch(
-                        checked = group?.allowsAds == true,
-                        onCheckedChange = { onToggleAds(it) }
-                    )
+            Column(modifier = Modifier.heightIn(max = 520.dp)) {
+                Text(group?.description.orEmpty(), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("Invite link", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text(invite, fontSize = 10.sp, color = MeshTealPrimary)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("Group invite", invite)); Toast.makeText(context, "Invite link copied", Toast.LENGTH_SHORT).show() }) { Text("Copy link") }
+                    TextButton(onClick = { showQr = !showQr }) { Text(if (showQr) "Hide QR" else "Invite QR") }
+                    TextButton(onClick = { showAdd = true }) { Text("Add") }
                 }
-
-                Spacer(modifier = Modifier.height(14.dp))
-                Text("MEMBERS (${members.size})", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                if (showQr) qrBitmap?.let { Image(bitmap = it.asImageBitmap(), contentDescription = "Group invite QR", modifier = Modifier.size(180.dp).align(Alignment.CenterHorizontally)) }
+                GroupSettingSwitch("Only admins edit group info", group?.onlyAdminsCanEditInfo == true, onOnlyAdminsEdit)
+                GroupSettingSwitch("Only admins send messages", group?.onlyAdminsCanSendMessages == true, onOnlyAdminsSend)
+                GroupSettingSwitch("Approve new members", group?.approvalRequired == true, onApprovalRequired)
+                GroupSettingSwitch("Invite link enabled", group?.inviteLinkEnabled == true, onInviteLinkEnabled)
+                GroupSettingSwitch("Group advertisements", group?.allowsAds == true, onToggleAds)
+                Text("Disappearing messages", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(0L to "Off", 86400L to "24h", 604800L to "7d").forEach { (seconds, label) ->
+                        FilterChip(selected = group?.disappearingMessagesSeconds == seconds, onClick = { onDisappearing(seconds) }, label = { Text(label) })
+                    }
+                }
                 Spacer(modifier = Modifier.height(6.dp))
-
+                Text("MEMBERS (${members.size})", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 members.forEach { m ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                         UserAvatar(name = m.displayName, size = 30)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(m.displayName, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.surfaceVariant
-                        ) {
-                            Text(m.role, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(m.displayName, fontSize = 12.sp, modifier = Modifier.weight(1f))
+                        Text(m.role, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        if (m.role == "MEMBER") {
+                            TextButton(onClick = { onPromoteAdmin(m.userId) }) { Text("Admin", fontSize = 10.sp) }
+                            IconButton(onClick = { onRemoveMember(m.userId) }) { Icon(Icons.Default.RemoveCircleOutline, contentDescription = "Remove") }
                         }
                     }
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
-        }
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
     )
+
+    if (showAdd) {
+        AlertDialog(onDismissRequest = { showAdd = false }, title = { Text("Add group member") },
+            text = { Column {
+                OutlinedTextField(userId, { userId = it }, label = { Text("User ID / username") }, singleLine = true)
+                OutlinedTextField(userName, { userName = it }, label = { Text("Display name") }, singleLine = true)
+            } },
+            confirmButton = { TextButton(onClick = { onAddMember(userId, userName); userId = ""; userName = ""; showAdd = false }, enabled = userId.isNotBlank() && userName.isNotBlank()) { Text("Add") } },
+            dismissButton = { TextButton(onClick = { showAdd = false }) { Text("Cancel") } })
+    }
 }
+
+@Composable
+private fun GroupSettingSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) { Text(label, fontSize = 12.sp); Switch(checked = checked, onCheckedChange = onCheckedChange) }
+}
+
+private fun generateQrBitmap(value: String): Bitmap? = try {
+    val matrix: BitMatrix = MultiFormatWriter().encode(value, BarcodeFormat.QR_CODE, 420, 420)
+    Bitmap.createBitmap(420, 420, Bitmap.Config.ARGB_8888).also { bitmap ->
+        for (x in 0 until 420) for (y in 0 until 420) bitmap.setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+    }
+} catch (_: Exception) { null }
 
 fun formatFullDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM d, h:mm:ss a", Locale.getDefault())
