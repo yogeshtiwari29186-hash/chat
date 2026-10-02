@@ -124,8 +124,32 @@ interface GroupDao {
     @Query("DELETE FROM group_members WHERE groupId = :groupId AND userId = :userId")
     suspend fun removeMember(groupId: String, userId: String)
 
+    @Query("UPDATE group_members SET role = :role WHERE groupId = :groupId AND userId = :userId")
+    suspend fun updateMemberRole(groupId: String, userId: String, role: String)
+
+    @Query("UPDATE groups SET name = :name, description = :description, updatedAt = :updatedAt WHERE groupId = :groupId")
+    suspend fun updateGroupInfo(groupId: String, name: String, description: String, updatedAt: Long = System.currentTimeMillis())
+
     @Query("UPDATE groups SET allowsAds = :allowAds WHERE groupId = :groupId")
     suspend fun updateGroupAdsSetting(groupId: String, allowAds: Boolean)
+
+    @Query("UPDATE groups SET onlyAdminsCanEditInfo = :value WHERE groupId = :groupId")
+    suspend fun setOnlyAdminsCanEditInfo(groupId: String, value: Boolean)
+
+    @Query("UPDATE groups SET onlyAdminsCanSendMessages = :value WHERE groupId = :groupId")
+    suspend fun setOnlyAdminsCanSendMessages(groupId: String, value: Boolean)
+
+    @Query("UPDATE groups SET disappearingMessagesSeconds = :seconds WHERE groupId = :groupId")
+    suspend fun setDisappearingMessages(groupId: String, seconds: Long)
+
+    @Query("UPDATE groups SET approvalRequired = :value WHERE groupId = :groupId")
+    suspend fun setApprovalRequired(groupId: String, value: Boolean)
+
+    @Query("UPDATE groups SET inviteLinkEnabled = :value WHERE groupId = :groupId")
+    suspend fun setInviteLinkEnabled(groupId: String, value: Boolean)
+
+    @Query("SELECT * FROM group_members WHERE groupId = :groupId AND userId = :userId LIMIT 1")
+    suspend fun getMember(groupId: String, userId: String): GroupMemberEntity?
 
     @Query("DELETE FROM groups WHERE groupId = :groupId")
     suspend fun deleteGroup(groupId: String)
