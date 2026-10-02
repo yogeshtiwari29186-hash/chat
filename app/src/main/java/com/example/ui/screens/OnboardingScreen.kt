@@ -20,7 +20,10 @@ import com.example.ui.theme.MeshTealDark
 import com.example.ui.theme.MeshTealPrimary
 
 @Composable
-fun OnboardingScreen(onComplete: (name: String, username: String, about: String) -> Unit) {
+fun OnboardingScreen(
+    errorMessage: String? = null,
+    onComplete: (name: String, username: String, about: String) -> Unit
+) {
     var name by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var about by remember { mutableStateOf("Using MeshPulse • Private & Offline") }
@@ -38,7 +41,7 @@ fun OnboardingScreen(onComplete: (name: String, username: String, about: String)
         OutlinedTextField(username,{username=it.lowercase().replace(" ","_")},label={Text("Username")},leadingIcon={Icon(Icons.Default.AlternateEmail,null)},singleLine=true,modifier=Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(about,{about=it},label={Text("About")},singleLine=true,modifier=Modifier.fillMaxWidth())
-        error?.let { Text(it,color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(8.dp)) }
+        (errorMessage ?: error)?.let { Text(it,color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(8.dp)) }
         Spacer(Modifier.height(18.dp))
         Button(onClick={
             if(name.isBlank()) error="Name is required"
