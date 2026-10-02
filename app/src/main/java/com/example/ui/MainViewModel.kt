@@ -70,28 +70,45 @@ class MainViewModel(
         }
     }
 
-    fun completeAccountCreation(name: String, username: String, about: String) {
+    fun completeAccountCreation(name: String, username: String, email: String, password: String, about: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, accountError = null) }
-            val normalizedUsername = username.trim().lowercase()
-            val localUser = runCatching {
-                repository.getOrCreateAccount(name.trim(), about.trim(), normalizedUsername, null)
-            }.getOrElse { error ->
-                _uiState.update { it.copy(isLoading = false, isAccountSetup = false, accountError = error.message ?: "Could not create local profile") }
-                return@launch
-            }
-            _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = localUser, accountError = null) }
             runCatching {
-                val uid = identityService.ensureSignedIn()
-                val reserved = identityService.reserveUsername(normalizedUsername, name.trim())
-                check(reserved) { "Username is already taken" }
-                val updated = localUser.copy(firebaseUid = uid)
-                repository.userDao.insertOrUpdate(updated)
-                _uiState.update { it.copy(currentUser = updated) }
-            }.onFailure { error ->
-                android.util.Log.e("MainViewModel", "Firebase identity binding failed", error)
-                _uiState.update { it.copy(accountError = "Local profile created, but Firebase identity could not be linked: " + (error.message ?: "unknown error")) }
+                val uid = identityService.createAccount(email, password)
+                identityService.saveProfile(uid, username, name)
+                repository.getOrCreateAccount(name.trim(), about.trim(), username.trim().lowercase(), uid, uid)
+            }.onSuccess { user ->
+                _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = user, accountError = null) }
+            }.onFailure { e ->
+                identityService.logout()
+                _uiState.update { it.copy(isLoading = false, accountError = e.message ?: "Account creation failed") }
             }
+        }
+    }
+
+    fun login(email: String, password: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, accountError = null) }
+            runCatching {
+                val uid = identityService.login(email, password)
+                val profile = identityService.getProfile(uid)
+                val name = profile?.get("displayName")?.toString() ?: email.substringBefore("@")
+                val username = profile?.get("username")?.toString() ?: ""
+                val about = "Using MeshPulse • Private & Offline"
+                repository.getOrCreateAccount(name, about, username, uid, uid)
+            }.onSuccess { user ->
+                _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = user, accountError = null) }
+            }.onFailure { e ->
+                identityService.logout()
+                _uiState.update { it.copy(isLoading = false, isAccountSetup = false, accountError = e.message ?: "Login failed") }
+            }
+        }
+    }
+
+    fun resetPassword(email: String) {
+        viewModelScope.launch {
+            runCatching { identityService.resetPassword(email) }
+                .onFailure { e -> _uiState.update { it.copy(accountError = e.message ?: "Password reset failed") } }
         }
     }
     fun selectTab(tab: MainTab) {
