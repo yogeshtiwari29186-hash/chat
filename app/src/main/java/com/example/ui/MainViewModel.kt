@@ -61,7 +61,7 @@ class MainViewModel(
     private fun checkExistingAccount() {
         viewModelScope.launch {
             val user = repository.userDao.getUserAccountDirect()
-            if (user != null) {
+            if (user != null && identityService.currentUser != null) {
                 repository.transportManager.initialize(user.userId, user.displayName, user.publicKey)
                 _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = user) }
             } else {
