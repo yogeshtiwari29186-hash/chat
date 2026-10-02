@@ -70,7 +70,8 @@ class MeshRepository(
         preferredName: String = "You",
         preferredAbout: String = "Online on MeshPulse • Decentralized",
         preferredUsername: String = "",
-        firebaseUid: String? = null
+        firebaseUid: String? = null,
+        preferredUserId: String? = null
     ): UserAccountEntity {
         val existing = userDao.getUserAccountDirect()
         if (existing != null) {
