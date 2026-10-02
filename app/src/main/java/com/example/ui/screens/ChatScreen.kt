@@ -650,7 +650,9 @@ private fun GroupInfoDialog(
                     TextButton(onClick = { showQr = !showQr }) { Text(if (showQr) "Hide QR" else "Invite QR") }
                     TextButton(onClick = { showAdd = true }) { Text("Add") }
                 }
-                if (showQr) qrBitmap?.let { Image(bitmap = it.asImageBitmap(), contentDescription = "Group invite QR", modifier = Modifier.size(180.dp).align(Alignment.CenterHorizontally)) }
+                if (showQr && qrBitmap != null) {
+                    Image(bitmap = qrBitmap.asImageBitmap(), contentDescription = "Group invite QR", modifier = Modifier.size(180.dp).align(Alignment.CenterHorizontally))
+                }
                 GroupSettingSwitch("Only admins edit group info", group?.onlyAdminsCanEditInfo == true, onOnlyAdminsEdit)
                 GroupSettingSwitch("Only admins send messages", group?.onlyAdminsCanSendMessages == true, onOnlyAdminsSend)
                 GroupSettingSwitch("Approve new members", group?.approvalRequired == true, onApprovalRequired)
