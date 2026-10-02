@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.graphics.Bitmap
 import android.content.Context
 import android.widget.Toast
+import android.widget.ImageView
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,12 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.example.data.local.entity.MessageEntity
 import com.example.ui.chat.ChatViewModel
 import com.example.ui.components.DeliveryStatusIcon
@@ -651,7 +652,11 @@ private fun GroupInfoDialog(
                     TextButton(onClick = { showAdd = true }) { Text("Add") }
                 }
                 if (showQr && qrBitmap != null) {
-                    Image(bitmap = qrBitmap.asImageBitmap(), contentDescription = "Group invite QR", modifier = Modifier.size(180.dp).align(Alignment.CenterHorizontally))
+                    AndroidView(
+                        factory = { ImageView(it).apply { scaleType = ImageView.ScaleType.FIT_CENTER } },
+                        update = { it.setImageBitmap(qrBitmap) },
+                        modifier = Modifier.size(180.dp).align(Alignment.CenterHorizontally)
+                    )
                 }
                 GroupSettingSwitch("Only admins edit group info", group?.onlyAdminsCanEditInfo == true, onOnlyAdminsEdit)
                 GroupSettingSwitch("Only admins send messages", group?.onlyAdminsCanSendMessages == true, onOnlyAdminsSend)
