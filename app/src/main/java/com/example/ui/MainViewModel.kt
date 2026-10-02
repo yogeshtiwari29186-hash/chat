@@ -61,7 +61,7 @@ class MainViewModel(
     private fun checkExistingAccount() {
         viewModelScope.launch {
             val user = repository.userDao.getUserAccountDirect()
-            if (user != null && identityService.currentUser != null) {
+            if (user != null && identityService.ensureSignedIn() == user.firebaseUid) {
                 repository.transportManager.initialize(user.userId, user.displayName, user.publicKey)
                 _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = user) }
             } else {
@@ -75,7 +75,7 @@ class MainViewModel(
             _uiState.update { it.copy(isLoading = true, accountError = null) }
             runCatching {
                 val uid = identityService.createAccount(email, password)
-                identityService.saveProfile(uid, username, name)
+                identityService.reserveUsername(username, name)
                 repository.getOrCreateAccount(name.trim(), about.trim(), username.trim().lowercase(), uid, uid)
             }.onSuccess { user ->
                 _uiState.update { it.copy(isLoading = false, isAccountSetup = true, currentUser = user, accountError = null) }
