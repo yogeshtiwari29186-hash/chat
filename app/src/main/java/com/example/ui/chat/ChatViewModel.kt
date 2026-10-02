@@ -112,6 +112,56 @@ class ChatViewModel(
         _uiState.update { it.copy(showGroupInfo = show) }
     }
 
+    fun addGroupMember(userId: String, displayName: String) {
+        val group = _uiState.value.group ?: return
+        if (userId.isBlank() || displayName.isBlank()) return
+        viewModelScope.launch {
+            repository.groupDao.insertMember(
+                GroupMemberEntity(
+                    groupId = group.groupId,
+                    userId = userId.trim(),
+                    displayName = displayName.trim(),
+                    role = "MEMBER"
+                )
+            )
+        }
+    }
+
+    fun removeGroupMember(userId: String) {
+        val group = _uiState.value.group ?: return
+        viewModelScope.launch { repository.groupDao.removeMember(group.groupId, userId) }
+    }
+
+    fun promoteGroupAdmin(userId: String) {
+        val group = _uiState.value.group ?: return
+        viewModelScope.launch { repository.groupDao.updateMemberRole(group.groupId, userId, "ADMIN") }
+    }
+
+    fun setOnlyAdminsCanEditInfo(value: Boolean) {
+        val group = _uiState.value.group ?: return
+        viewModelScope.launch { repository.groupDao.setOnlyAdminsCanEditInfo(group.groupId, value) }
+    }
+
+    fun setOnlyAdminsCanSendMessages(value: Boolean) {
+        val group = _uiState.value.group ?: return
+        viewModelScope.launch { repository.groupDao.setOnlyAdminsCanSendMessages(group.groupId, value) }
+    }
+
+    fun setApprovalRequired(value: Boolean) {
+        val group = _uiState.value.group ?: return
+        viewModelScope.launch { repository.groupDao.setApprovalRequired(group.groupId, value) }
+    }
+
+    fun setInviteLinkEnabled(value: Boolean) {
+        val group = _uiState.value.group ?: return
+        viewModelScope.launch { repository.groupDao.setInviteLinkEnabled(group.groupId, value) }
+    }
+
+    fun setDisappearingMessages(seconds: Long) {
+        val group = _uiState.value.group ?: return
+        viewModelScope.launch { repository.groupDao.setDisappearingMessages(group.groupId, seconds) }
+    }
+
     fun toggleGroupAds(allow: Boolean) {
         val group = _uiState.value.group ?: return
         viewModelScope.launch {
