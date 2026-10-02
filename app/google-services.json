@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1040898046228",
+    "project_id": "whatsapp-347ca",
+    "storage_bucket": "whatsapp-347ca.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040898046228:android:48354595c291969c3bea01",
+        "android_client_info": {
+          "package_name": "com.mycomapny.chat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCY6wwqi6SfC6gn-JmEzaczZM7Z3U8IW9M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040898046228:android:3b8671d148033bba3bea01",
+        "android_client_info": {
+          "package_name": "com.whatsaap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCY6wwqi6SfC6gn-JmEzaczZM7Z3U8IW9M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
