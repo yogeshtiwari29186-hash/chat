@@ -68,7 +68,9 @@ class MeshRepository(
 
     suspend fun getOrCreateAccount(
         preferredName: String = "You",
-        preferredAbout: String = "Online on MeshPulse • Decentralized"
+        preferredAbout: String = "Online on MeshPulse • Decentralized",
+        preferredUsername: String = "",
+        firebaseUid: String? = null
     ): UserAccountEntity {
         val existing = userDao.getUserAccountDirect()
         if (existing != null) {
@@ -84,6 +86,8 @@ class MeshRepository(
         val newUser = UserAccountEntity(
             userId = userId,
             displayName = preferredName,
+            username = preferredUsername,
+            firebaseUid = firebaseUid,
             about = preferredAbout,
             avatarUri = null,
             publicKey = keyPair.publicKeyBase64,
