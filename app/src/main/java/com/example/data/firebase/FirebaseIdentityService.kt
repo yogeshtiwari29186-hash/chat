@@ -9,9 +9,29 @@ class FirebaseIdentityService(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
+    suspend fun createAccount(email: String, password: String): String {
+        require(email.trim().isNotEmpty()) { "Email is required" }
+        require(password.length >= 6) { "Password must be at least 6 characters" }
+        return auth.createUserWithEmailAndPassword(email.trim(), password).await().user?.uid
+            ?: error("Firebase account creation failed")
+    }
+
+    suspend fun login(email: String, password: String): String {
+        return auth.signInWithEmailAndPassword(email.trim(), password).await().user?.uid
+            ?: error("Firebase login failed")
+    }
+
+    suspend fun resetPassword(email: String) {
+        auth.sendPasswordResetEmail(email.trim()).await()
+    }
+
+    fun logout() {
+        auth.signOut()
+    }
+
     suspend fun ensureSignedIn(): String {
         val current = auth.currentUser
-        return (current ?: auth.signInAnonymously().await().user!!).uid
+        return current?.uid ?: error("Please login with your email first")
     }
 
     suspend fun reserveUsername(username: String, displayName: String, photoUrl: String? = null): Boolean {
