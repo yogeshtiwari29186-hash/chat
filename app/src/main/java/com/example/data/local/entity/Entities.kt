@@ -7,6 +7,8 @@ import androidx.room.PrimaryKey
 data class UserAccountEntity(
     @PrimaryKey val userId: String,
     val displayName: String,
+    val username: String = "",
+    val firebaseUid: String? = null,
     val about: String = "Using MeshPulse • Private & Offline",
     val avatarUri: String? = null,
     val publicKey: String,
